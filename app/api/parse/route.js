@@ -34,17 +34,35 @@ export async function POST(req) {
 
     // Send to Groq
 const prompt = `
-You are a professional resume writer. Extract and aggressively compress this LinkedIn PDF into a clean one-page resume.
+You are a professional resume writer and layout expert. Your job is to extract and rewrite this LinkedIn PDF into a resume that fits EXACTLY on one A4 page.
 
-STRICT RULES:
-- Summary: MAXIMUM 2 sentences, no more
-- Each experience description: MAXIMUM 1-2 lines of plain text, no bullet points, no line breaks, just one clean sentence or two
-- Remove ALL filler words, redundant phrases, repeated ideas
-- Skills: maximum 10 items
-- If there are more than 5 experience entries, keep only the 5 most recent or relevant
-- NO line breaks inside description strings — must be plain single-paragraph text
-- Descriptions must be under 180 characters each
-- Keep all names, companies, dates exactly as written
+CORE RULE: The total amount of text must fit on a single A4 page. You must judge how much content there is and compress accordingly.
+
+STRICT RULES — non negotiable:
+- NEVER invent or guess dates. If a date is not explicitly written in the PDF, leave duration as empty string ""
+- NEVER move entries between sections. Experience stays in experience, volunteer stays in volunteer, projects stay in projects
+- Only populate volunteer[] if the LinkedIn PDF has an explicit "Volunteering" section — do not pull from experience
+- Only populate projects[] if the LinkedIn PDF has an explicit "Projects" section — do not pull from experience  
+- If volunteer section exists in LinkedIn, include a short description of what they did
+- If a section does not exist in the PDF, return empty array [] — never fill it with guessed data
+- Copy dates exactly as they appear in the text — do not calculate or estimate durations
+- If you are unsure about any data point, leave it as empty string rather than guessing
+
+COMPRESSION GUIDE based on content volume:
+- If the person has 6+ experience entries → max 1 sentence per description, keep only 5 most recent roles
+- If the person has 3-5 experience entries → max 2 sentences per description
+- If the person has 1-2 experience entries → max 3 sentences per description
+- Summary: always 2 sentences max, sharp and specific
+- Skills: max 12, pick the most relevant
+- If there are many sections (volunteer, projects, certs, awards) → keep only the most impressive 2 entries per section
+- If there are few sections → you can be slightly more generous with descriptions
+
+ALWAYS:
+- Keep company names, roles, dates, school names exactly as written
+- Never invent facts
+- Write descriptions as clean flowing sentences, no bullet symbols, no line breaks inside descriptions
+- Remove filler, repetition, vague phrases like "responsible for" or "worked on"
+- Start descriptions with strong action verbs
 
 Return ONLY valid JSON, nothing else:
 {
