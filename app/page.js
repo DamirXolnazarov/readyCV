@@ -1,3 +1,4 @@
+'use client'
 import Link from 'next/link'
 
 function ReadyCVLogo({ size = 28 }) {
@@ -80,7 +81,7 @@ export default function Landing() {
             <a href="#features" style={S.navLink}>Features</a>
             <a href="#how"      style={S.navLink}>How it works</a>
             <a href="#reviews"  style={S.navLink}>Reviews</a>
-            <Link href="/app" style={S.navCta} className="nav-cta">Get Started Free</Link>
+            <Link href="/signin" style={S.navCta} className="nav-cta">Get Started Free</Link>
           </div>
         </div>
       </nav>
@@ -100,7 +101,7 @@ export default function Landing() {
             Upload your LinkedIn PDF and readyCV transforms it into a polished, ATS-optimized resume with live editing, job tailoring, and cover letter generation — in under 3 minutes.
           </p>
           <div style={S.heroBtns} className="hero-btns">
-            <Link href="/app" style={S.btnPrimary} className="cta-btn">✨ Build My Resume Free</Link>
+            <Link href="/signin" style={S.btnPrimary} className="cta-btn">✨ Build My Resume Free</Link>
             <a href="#how" style={S.btnSecondary}>See how it works →</a>
           </div>
           <p style={S.heroProof} className="hero-btns">Trusted by 2,400+ job seekers and university applicants worldwide</p>
@@ -228,7 +229,7 @@ export default function Landing() {
           <ReadyCVLogo size={52} />
           <h2 style={S.ctaTitle}>Start building for free.</h2>
           <p style={S.ctaSub}>No account. No credit card. Just a better resume.</p>
-          <Link href="/app" style={S.btnPrimary} className="cta-btn">✨ Build My Resume</Link>
+          <Link href="/signin" style={S.btnPrimary} className="cta-btn">✨ Build My Resume</Link>
         </div>
       </section>
 

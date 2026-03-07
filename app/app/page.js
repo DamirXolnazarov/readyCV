@@ -1,5 +1,8 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { useSession, signIn, signOut } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
+import { supabase } from '../../lib/supabase'
 
 const uid = () => Math.random().toString(36).slice(2, 7)
 
@@ -66,6 +69,24 @@ const ACCENT_COLORS = [
   { id:'teal',     label:'Teal',      value:'#0d3d3d' },
 ]
 
+const FONTS = {
+  sidebar:   [
+    { id:'inter',        label:'Inter',          value:"'Inter', sans-serif",               google:'Inter:wght@300;400;500;600;700' },
+    { id:'jakarta',      label:'Jakarta',         value:"'Plus Jakarta Sans', sans-serif",   google:'Plus+Jakarta+Sans:wght@300;400;500;600;700' },
+    { id:'dm',           label:'DM Sans',         value:"'DM Sans', sans-serif",             google:'DM+Sans:wght@300;400;500;600;700' },
+  ],
+  executive: [
+    { id:'georgia',      label:'Georgia',         value:"Georgia, serif",                    google:null },
+    { id:'playfair',     label:'Playfair',         value:"'Playfair Display', serif",         google:'Playfair+Display:wght@400;500;600;700;800;900' },
+    { id:'merriweather', label:'Merriweather',     value:"'Merriweather', serif",             google:'Merriweather:wght@300;400;700;900' },
+  ],
+  heritage:  [
+    { id:'georgia',      label:'Georgia',         value:"Georgia, serif",                    google:null },
+    { id:'lora',         label:'Lora',             value:"'Lora', serif",                     google:'Lora:ital,wght@0,400;0,500;0,600;0,700;1,400' },
+    { id:'baskerville',  label:'Baskerville',      value:"'Libre Baskerville', serif",        google:'Libre+Baskerville:wght@400;700' },
+  ],
+}
+
 function ReadyCVLogo({ size = 24 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
@@ -81,9 +102,8 @@ function ReadyCVLogo({ size = 24 }) {
 }
 
 // ── TEMPLATE 1: Sidebar (formerly Navy) ──────────────────────
-function TemplateSidebar({ resume, accent='#0f1b2e' }) {
+function TemplateSidebar({ resume, accent='#0f1b2e', font="'Inter', sans-serif" }) {
   if (!resume) return null
-  const font = "'Inter', Arial, sans-serif"
   return (
     <div style={{ background:'#fff', width:794, minHeight:1123, display:'flex', flexShrink:0, fontFamily:font }}>
       <div style={{ width:215, background:'#fafafa', borderRight:'1px solid #f0f0f0', display:'flex', flexDirection:'column', flexShrink:0 }}>
@@ -181,9 +201,8 @@ const T1 = {
 }
 
 // ── TEMPLATE 2: Executive (formerly Olive) ───────────────────
-function TemplateExecutive({ resume, accent='#1a3a2a' }) {
+function TemplateExecutive({ resume, accent='#1a3a2a', font="Georgia, serif" }) {
   if (!resume) return null
-  const font = "Georgia, 'Times New Roman', serif"
   // Derive a slightly darker shade for the contact bar
   return (
     <div style={{ background:'#fff', width:794, minHeight:1123, flexShrink:0, fontFamily:font, padding:'32px 40px', boxSizing:'border-box' }}>
@@ -270,9 +289,8 @@ const T2 = {
 }
 
 // ── TEMPLATE 3: Heritage (formerly Classic) ──────────────────
-function TemplateHeritage({ resume }) {
+function TemplateHeritage({ resume, font="Georgia, serif" }) {
   if (!resume) return null
-  const font = "Georgia, 'Times New Roman', serif"
   return (
     <div style={{ background:'#fff', width:794, minHeight:1123, flexShrink:0, fontFamily:font, padding:'36px 48px', boxSizing:'border-box' }}>
       <div style={{textAlign:'center',marginBottom:16,borderBottom:'2px solid #1a1a1a',paddingBottom:14}}>
@@ -339,6 +357,10 @@ const T3 = {
 
 // ── MAIN APP ──────────────────────────────────────────────────
 export default function App() {
+  // ── Hooks first — always at top ──
+  const { data: session, status } = useSession()
+  const router = useRouter()
+
   const [file,              setFile]             = useState(null)
   const [loading,           setLoading]          = useState(false)
   const [resume,            setResume]           = useState(null)
@@ -351,6 +373,39 @@ export default function App() {
   const [template,          setTemplate]         = useState('sidebar')
   const [templateSelected,  setTemplateSelected] = useState(false)
   const [accentColor,       setAccentColor]      = useState('#0f1b2e')
+  const [resumeId,          setResumeId]         = useState(null)
+  const [saveStatus,        setSaveStatus]       = useState('')
+  const [mobileTab,         setMobileTab]        = useState('edit')
+  const [resumeFont,        setResumeFont]       = useState(FONTS.sidebar[0].value)
+  const autoSaveTimer = useRef(null)
+
+  // Load resume being edited from dashboard
+  useEffect(() => {
+    const stored = sessionStorage.getItem('editResume')
+    if (stored) {
+      const parsed = JSON.parse(stored)
+      setResume(parsed.data)
+      setTemplate(parsed.template || 'sidebar')
+      setAccentColor(parsed.accent_color || '#0f1b2e')
+      setResumeFont(parsed.font || FONTS[parsed.template||'sidebar'][0].value)
+      setResumeId(parsed.id)
+      setTemplateSelected(true)
+      sessionStorage.removeItem('editResume')
+    }
+  }, [])
+
+  // Auto-save every 30 seconds when resume exists
+  useEffect(() => {
+    if (!resume || !session?.user?.email) return
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
+    autoSaveTimer.current = setTimeout(async () => {
+      setSaveStatus('saving')
+      await saveResume(resume, template, accentColor)
+      setSaveStatus('saved')
+      setTimeout(() => setSaveStatus(''), 2500)
+    }, 30000)
+    return () => clearTimeout(autoSaveTimer.current)
+  }, [resume, template, accentColor])
 
   const handleUpload = async () => {
     if (!file) return alert('Please select a file first!')
@@ -385,6 +440,8 @@ export default function App() {
   }
 
   const handleDownload = async () => {
+    // Save to Supabase before downloading
+    await saveResume(resume, template, accentColor)
     const element = document.getElementById('resume-preview')
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><style>*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}body{font-family:Arial,sans-serif;}</style></head><body>${element.outerHTML}</body></html>`
     const res = await fetch('/api/download', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ html }) })
@@ -394,6 +451,24 @@ export default function App() {
     const a    = document.createElement('a')
     a.href = url; a.download = `${resume.name||'resume'}-readyCV.pdf`; a.click()
     URL.revokeObjectURL(url)
+  }
+
+  const saveResume = async (resumeData, tpl, color) => {
+    if (!session?.user?.email) return
+    const payload = {
+      user_email:   session.user.email,
+      data:         resumeData,
+      template:     tpl,
+      accent_color: color,
+      font:         resumeFont,
+      updated_at:   new Date().toISOString(),
+    }
+    if (resumeId) {
+      await supabase.from('resumes').update(payload).eq('id', resumeId)
+    } else {
+      const { data: inserted } = await supabase.from('resumes').insert(payload).select().single()
+      if (inserted) setResumeId(inserted.id)
+    }
   }
 
   const set     = (f,v) => setResume(p => ({ ...p, [f]:v }))
@@ -416,6 +491,18 @@ export default function App() {
   const completion = () => {
     const total = REQUIRED_CHECKS.length + SECTION_CHECKS.length
     return Math.round(((total - getMissing().length) / total) * 100)
+  }
+
+  // ── Auth checks ──────────────────────────────────────────────
+  if (status === 'loading') return (
+    <div style={{minHeight:'100vh',background:'#0f1b2e',display:'flex',alignItems:'center',justifyContent:'center'}}>
+      <div style={{color:'#64748b',fontSize:14,fontFamily:"'Inter',sans-serif"}}>Loading...</div>
+    </div>
+  )
+
+  if (!session) {
+    router.push('/signin')
+    return null
   }
 
   // ── Upload screen ────────────────────────────────────────────
@@ -497,13 +584,23 @@ export default function App() {
 
   return (
     <div style={E.wrap}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}body{font-family:'Inter',sans-serif;overflow:hidden;}.tab-btn:hover{background:rgba(255,255,255,0.06)!important;}.inp:focus{border-color:#2563eb!important;box-shadow:0 0 0 3px rgba(37,99,235,0.12)!important;}.add-btn:hover{background:rgba(37,99,235,0.18)!important;}.dl-btn:hover{background:rgba(255,255,255,0.12)!important;}.ai-btn:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(37,99,235,0.3)!important;}.swatch:hover{transform:scale(1.2);}@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}.form-in{animation:fadeUp 0.2s ease both;}::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:2px;}`}</style>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700;800;900&family=Merriweather:wght@300;400;700;900&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Libre+Baskerville:wght@400;700&display=swap');*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}body{font-family:'Inter',sans-serif;overflow:hidden;}.tab-btn:hover{background:rgba(255,255,255,0.06)!important;}.inp:focus{border-color:#2563eb!important;box-shadow:0 0 0 3px rgba(37,99,235,0.12)!important;}.add-btn:hover{background:rgba(37,99,235,0.18)!important;}.dl-btn:hover{background:rgba(255,255,255,0.12)!important;}.ai-btn:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(37,99,235,0.3)!important;}.swatch:hover{transform:scale(1.2);}@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}.form-in{animation:fadeUp 0.2s ease both;}::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:2px;}@media(max-width:768px){.mobile-only{display:flex!important;}.mobile-left{width:100%!important;flex-shrink:0!important;}.mobile-right{display:none!important;}.mobile-right.show{display:flex!important;}.mobile-left.show{display:flex!important;}.mobile-left:not(.show){display:none!important;}body{overflow:auto!important;}}@media(min-width:769px){.mobile-only{display:none!important;}.mobile-left{display:flex!important;}.mobile-right{display:flex!important;}}`}</style>
+
+      {/* Mobile tab bar */}
+      <div className="mobile-only" style={{position:'fixed',bottom:0,left:0,right:0,zIndex:100,background:'#0f1b2e',borderTop:'1px solid rgba(255,255,255,0.08)',display:'flex',height:56}}>
+        <button onClick={()=>setMobileTab('edit')} style={{flex:1,background:mobileTab==='edit'?'rgba(37,99,235,0.15)':'transparent',border:'none',color:mobileTab==='edit'?'#60a5fa':'#64748b',fontSize:12,fontWeight:600,cursor:'pointer',fontFamily:"'Inter',sans-serif",display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:2}}>
+          <span style={{fontSize:16}}>✏️</span>Edit
+        </button>
+        <button onClick={()=>setMobileTab('preview')} style={{flex:1,background:mobileTab==='preview'?'rgba(37,99,235,0.15)':'transparent',border:'none',color:mobileTab==='preview'?'#60a5fa':'#64748b',fontSize:12,fontWeight:600,cursor:'pointer',fontFamily:"'Inter',sans-serif",display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:2}}>
+          <span style={{fontSize:16}}>👁</span>Preview
+        </button>
+      </div>
 
       {/* LEFT PANEL */}
-      <div style={E.left}>
+      <div style={E.left} className={`mobile-left${mobileTab==='edit'?' show':''}`}>
         <div style={E.leftTop}>
           <div style={{display:'flex',alignItems:'center',gap:8}}><ReadyCVLogo size={22}/><span style={E.logo}>readyCV</span></div>
-          <button onClick={()=>{ setResume(null); setTemplateSelected(false) }} style={E.newBtn}>← New</button>
+          <div style={{display:"flex",gap:8,alignItems:"center"}}><button onClick={()=>{ setResume(null); setTemplateSelected(false) }} style={E.newBtn}>← New</button><button onClick={()=>signOut()} style={{...E.newBtn,color:"#ef4444",borderColor:"rgba(239,68,68,0.2)"}}>Sign out</button></div>
         </div>
 
         {/* Completion */}
@@ -601,14 +698,14 @@ export default function App() {
       </div>
 
       {/* RIGHT PANEL */}
-      <div style={E.right}>
+      <div style={{...E.right,paddingBottom:56}} className={`mobile-right${mobileTab==='preview'?' show':''}`}>
         <div style={E.toolbar}>
           <div style={{display:'flex',alignItems:'center',gap:16}}>
             {/* Template switcher */}
             <div style={{display:'flex',alignItems:'center',gap:6}}>
               <span style={{color:'#475569',fontSize:11,fontWeight:500}}>Template:</span>
               {TEMPLATES.map(t=>(
-                <button key={t.id} onClick={()=>setTemplate(t.id)}
+                <button key={t.id} onClick={()=>{ setTemplate(t.id); setResumeFont(FONTS[t.id][0].value) }}
                   style={{background:template===t.id?'rgba(255,255,255,0.1)':'transparent',border:template===t.id?'1px solid rgba(255,255,255,0.25)':'1px solid rgba(255,255,255,0.08)',borderRadius:7,padding:'5px 10px',cursor:'pointer',transition:'all 0.15s',fontFamily:"'Inter',sans-serif",color:template===t.id?'#e2e8f0':'#64748b',fontSize:11,fontWeight:template===t.id?600:400}}>
                   {t.label}
                 </button>
@@ -631,15 +728,32 @@ export default function App() {
                 ))}
               </div>
             )}
+            {/* Font picker */}
+            <div style={{display:'flex',alignItems:'center',gap:6}}>
+              <span style={{color:'#475569',fontSize:11,fontWeight:500}}>Font:</span>
+              {FONTS[template].map(f=>(
+                <button key={f.id} onClick={()=>setResumeFont(f.value)}
+                  style={{background:resumeFont===f.value?'rgba(255,255,255,0.1)':'transparent',border:resumeFont===f.value?'1px solid rgba(255,255,255,0.25)':'1px solid rgba(255,255,255,0.08)',borderRadius:7,padding:'5px 10px',cursor:'pointer',transition:'all 0.15s',fontFamily:f.value,color:resumeFont===f.value?'#e2e8f0':'#64748b',fontSize:11,fontWeight:resumeFont===f.value?600:400}}>
+                  {f.label}
+                </button>
+              ))}
+            </div>
           </div>
-          <button onClick={handleDownload} style={E.dlBtn} className="dl-btn">⬇ Download PDF</button>
+          <div style={{display:'flex',alignItems:'center',gap:12}}>
+            {saveStatus==='saving' && <span style={{color:'#64748b',fontSize:11}}>⏳ Saving...</span>}
+            {saveStatus==='saved'  && <span style={{color:'#10b981',fontSize:11}}>✓ Saved</span>}
+            <div style={{display:'flex',gap:8}}>
+              <button onClick={async()=>{ await saveResume(resume,template,accentColor); router.push('/dashboard') }} style={{...E.dlBtn,background:'rgba(16,185,129,0.1)',borderColor:'rgba(16,185,129,0.2)',color:'#10b981'}}>💾 Save</button>
+              <button onClick={handleDownload} style={E.dlBtn} className="dl-btn">⬇ Download PDF</button>
+            </div>
+          </div>
         </div>
 
         <div style={E.previewScroll}>
           <div id="resume-preview">
-            {template==='sidebar'   && <TemplateSidebar   resume={resume} accent={accentColor}/>}
-            {template==='executive' && <TemplateExecutive resume={resume} accent={accentColor}/>}
-            {template==='heritage'  && <TemplateHeritage  resume={resume}/>}
+            {template==='sidebar'   && <TemplateSidebar   resume={resume} accent={accentColor} font={resumeFont}/>}
+            {template==='executive' && <TemplateExecutive resume={resume} accent={accentColor} font={resumeFont}/>}
+            {template==='heritage'  && <TemplateHeritage  resume={resume} font={resumeFont}/>}
           </div>
         </div>
       </div>
@@ -709,8 +823,8 @@ const E = {
   cardDel:       {background:'transparent',border:'none',color:'#ef4444',fontSize:11,cursor:'pointer',padding:0,marginBottom:8,fontWeight:500,fontFamily:"'Inter',sans-serif"},
   field:         {marginBottom:10},
   label:         {display:'flex',alignItems:'center',gap:6,color:'#475569',fontSize:10,fontWeight:500,marginBottom:4,letterSpacing:'0.04em',textTransform:'uppercase'},
-  inp:           {width:'100%',background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:8,color:'#e2e8f0',padding:'8px 10px',fontSize:13,outline:'none',boxSizing:'border-box',fontFamily:"'Inter',sans-serif",transition:'all 0.15s'},
-  inpMiss:       {borderColor:'rgba(245,158,11,0.5)',background:'rgba(245,158,11,0.04)'},
+  inp:           {width:'100%',background:'rgba(255,255,255,0.05)',borderWidth:'1px',borderStyle:'solid',borderColor:'rgba(255,255,255,0.08)',borderRadius:8,color:'#e2e8f0',padding:'8px 10px',fontSize:13,outline:'none',boxSizing:'border-box',fontFamily:"'Inter',sans-serif",transition:'all 0.15s'},
+  inpMiss:       {borderWidth:'1px',borderStyle:'solid',borderColor:'rgba(245,158,11,0.5)',background:'rgba(245,158,11,0.04)'},
   missMark:      {color:'#f59e0b',fontSize:9,fontWeight:600},
   warnBanner:    {background:'rgba(245,158,11,0.06)',border:'1px solid rgba(245,158,11,0.15)',borderRadius:7,color:'#f59e0b',fontSize:12,padding:'8px 10px',marginBottom:12,fontWeight:500},
   hint:          {color:'#475569',fontSize:11,margin:'0 0 10px',lineHeight:1.6,fontWeight:400},
