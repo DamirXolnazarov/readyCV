@@ -36,7 +36,7 @@ const handler = NextAuth({
 
           if (existing) throw new Error('Email already in use')
 
-          // Hash password and create user
+          // Ha| password and create user
           const hashed = await bcrypt.hash(password, 12)
           const { data: newUser, error } = await supabase
             .from('users')
