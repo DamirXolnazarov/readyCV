@@ -43,6 +43,9 @@ const G = {
   borderBottom:'1px solid rgba(255,255,255,0.04)',
   boxShadow:'0 0 80px rgba(0,0,0,0.5),0 30px 80px rgba(0,0,0,0.5),inset 0 1px 0 rgba(255,255,255,0.16)',
 }
+// at the top of your App component, alongside other refs:
+
+
 
 // specular line + noise texture — no sheen gradient (that caused the white bands)
 function GlassLayers() {
@@ -141,6 +144,8 @@ function ReviewCard({ r }) {
     </div>
   )
 }
+
+
 
 // ─── STEP CARD — mouse-tracking glow ─────────────────────────
 // Uses RAF + ref so mouse position updates never trigger re-renders.
