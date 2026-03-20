@@ -1,4 +1,5 @@
 import Providers from './providers'
+import FeedbackWidget from '@/components/FeedbackWidget'
 
 export const metadata = {
   title: 'ICVY',
@@ -16,6 +17,7 @@ export default function RootLayout({ children }) {
       <body>
         <Providers>
           {children}
+          <FeedbackWidget />
         </Providers>
       </body>
     </html>

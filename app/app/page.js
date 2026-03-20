@@ -3,18 +3,19 @@ import { useState, useEffect, useRef } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
+import { useTrack } from '../../lib/useTrack'
 
 const uid = () => Math.random().toString(36).slice(2, 7)
 
 const EMPTY = {
   experience:     { id:'', role:'', company:'', duration:'', description:'' },
   education:      { id:'', degree:'', field:'', school:'', year:'', gpa:'' },
-  certifications: { id:'', name:'', issuer:'', year:'' },
+  certifications: { id:'', name:'', issuer:'', year:'', description:'' },
   projects:       { id:'', name:'', description:'' },
   languages:      { id:'', language:'', proficiency:'' },
-  awards:         { id:'', name:'', issuer:'', year:'' },
+  awards:         { id:'', name:'', issuer:'', year:'', description:'' },
   volunteer:      { id:'', organization:'', role:'', duration:'', description:'' },
-  interests:      { id:'', interest:'' },
+  interests:      { id:'', interest:'', description:'' },
 }
 
 const REQUIRED_CHECKS = [
@@ -131,9 +132,10 @@ function TemplateSidebar({ resume, accent='#0f1b2e', font="'Inter', sans-serif" 
           <div style={{ padding:'14px 16px 0' }}>
             <SideSecTitle>CERTIFICATIONS</SideSecTitle>
             {resume.certifications.map((c,i)=>(
-              <div key={i} style={{marginBottom:5}}>
+              <div key={i} style={{marginBottom:6}}>
                 <p style={{...T1.sideText,fontWeight:600}}>{c.name}</p>
                 {c.issuer&&<p style={{...T1.sideText,fontSize:8.5,color:'#9ca3af'}}>{c.issuer}{c.year?` · ${c.year}`:''}</p>}
+                {c.description&&<p style={{...T1.sideText,fontSize:8.5,color:'#6b7280',fontStyle:'italic'}}>{c.description}</p>}
               </div>
             ))}
           </div>
@@ -142,9 +144,10 @@ function TemplateSidebar({ resume, accent='#0f1b2e', font="'Inter', sans-serif" 
           <div style={{ padding:'14px 16px 0' }}>
             <SideSecTitle>AWARDS</SideSecTitle>
             {resume.awards.map((a,i)=>(
-              <div key={i} style={{marginBottom:5}}>
+              <div key={i} style={{marginBottom:6}}>
                 <p style={{...T1.sideText,fontWeight:600}}>{a.name}</p>
                 {(a.issuer||a.year)&&<p style={{...T1.sideText,fontSize:8.5,color:'#9ca3af'}}>{a.issuer}{a.year?` · ${a.year}`:''}</p>}
+                {a.description&&<p style={{...T1.sideText,fontSize:8.5,color:'#6b7280',fontStyle:'italic'}}>{a.description}</p>}
               </div>
             ))}
           </div>
@@ -152,7 +155,12 @@ function TemplateSidebar({ resume, accent='#0f1b2e', font="'Inter', sans-serif" 
         {(resume.interests||[]).length>0 && (
           <div style={{ padding:'14px 16px 0' }}>
             <SideSecTitle>INTERESTS</SideSecTitle>
-            {resume.interests.map((it,i)=><p key={i} style={T1.sideText}>· {it.interest}</p>)}
+            {resume.interests.map((it,i)=>(
+              <div key={i} style={{marginBottom:4}}>
+                <p style={T1.sideText}>· {it.interest}</p>
+                {it.description&&<p style={{...T1.sideText,fontSize:8.5,color:'#6b7280',fontStyle:'italic',paddingLeft:8}}>{it.description}</p>}
+              </div>
+            ))}
           </div>
         )}
         <div style={{marginTop:'auto',padding:'10px 16px 8px',display:'flex',alignItems:'center',gap:4,borderTop:'1px solid #f0f0f0'}}>
@@ -293,9 +301,13 @@ function TemplateExecutive({ resume, accent='#1a3a2a', font="Georgia, serif" }) 
       {(resume.certifications||[]).length>0&&(
         <T2Sec title="CERTIFICATIONS" accent={accent}>
           {resume.certifications.map((c,i)=>(
-            <div key={i} style={{marginBottom:7}}>
-              <p style={{fontSize:11,fontWeight:700,color:'#222',margin:0}}>{c.name}</p>
-              {c.issuer&&<p style={{fontSize:10,color:'#555',margin:0}}>{c.issuer}{c.year?` · ${c.year}`:''}</p>}
+            <div key={i} style={{marginBottom:8}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline'}}>
+                <p style={{fontSize:11,fontWeight:700,color:'#222',margin:0}}>{c.name}</p>
+                {c.year&&<span style={{fontSize:9.5,color:'#777',flexShrink:0,marginLeft:8}}>{c.year}</span>}
+              </div>
+              {c.issuer&&<p style={{fontSize:10,color:'#555',margin:'1px 0 0'}}>{c.issuer}</p>}
+              {c.description&&<p style={{...T2.body,fontStyle:'italic',color:'#666'}}>{c.description}</p>}
             </div>
           ))}
         </T2Sec>
@@ -303,16 +315,29 @@ function TemplateExecutive({ resume, accent='#1a3a2a', font="Georgia, serif" }) 
       {(resume.awards||[]).length>0&&(
         <T2Sec title="AWARDS" accent={accent}>
           {resume.awards.map((a,i)=>(
-            <div key={i} style={{marginBottom:7}}>
-              <p style={{fontSize:11,fontWeight:700,color:'#222',margin:0}}>{a.name}</p>
-              {a.issuer&&<p style={{fontSize:10,color:'#555',margin:0}}>{a.issuer}{a.year?` · ${a.year}`:''}</p>}
+            <div key={i} style={{marginBottom:8}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline'}}>
+                <p style={{fontSize:11,fontWeight:700,color:'#222',margin:0}}>{a.name}</p>
+                {a.year&&<span style={{fontSize:9.5,color:'#777',flexShrink:0,marginLeft:8}}>{a.year}</span>}
+              </div>
+              {a.issuer&&<p style={{fontSize:10,color:'#555',margin:'1px 0 0'}}>{a.issuer}</p>}
+              {a.description&&<p style={{...T2.body,fontStyle:'italic',color:'#666'}}>{a.description}</p>}
             </div>
           ))}
         </T2Sec>
       )}
       {(resume.interests||[]).length>0&&(
         <T2Sec title="INTERESTS" accent={accent}>
-          <p style={T2.body}>{resume.interests.map(i=>i.interest).join(' · ')}</p>
+          {resume.interests.some(i=>i.description) ? (
+            resume.interests.map((it,i)=>(
+              <div key={i} style={{marginBottom:5}}>
+                <p style={{...T2.body,fontWeight:600,margin:0}}>{it.interest}</p>
+                {it.description&&<p style={{...T2.body,fontStyle:'italic',color:'#666'}}>{it.description}</p>}
+              </div>
+            ))
+          ) : (
+            <p style={T2.body}>{resume.interests.map(i=>i.interest).join(' · ')}</p>
+          )}
         </T2Sec>
       )}
       <div style={{display:'flex',alignItems:'center',gap:4,marginTop:'auto',paddingTop:10,borderTop:'1px solid #e5e7eb'}}>
@@ -375,11 +400,63 @@ function TemplateHeritage({ resume, font="Georgia, serif" }) {
         <T3Sec title="OTHER">
           {(resume.skills||[]).filter(Boolean).length>0&&(<div style={{display:'flex',gap:14,marginBottom:5}}><div style={{width:76,flexShrink:0,fontSize:10,color:'#555',fontWeight:600}}>Skills</div><p style={T3.body}>{resume.skills.filter(Boolean).join(' · ')}</p></div>)}
           {(resume.languages||[]).length>0&&(<div style={{display:'flex',gap:14,marginBottom:5}}><div style={{width:76,flexShrink:0,fontSize:10,color:'#555',fontWeight:600}}>Languages</div><p style={T3.body}>{resume.languages.map(l=>`${l.language}${l.proficiency?` (${l.proficiency})`:''}`).join(' · ')}</p></div>)}
-          {(resume.certifications||[]).length>0&&(<div style={{display:'flex',gap:14,marginBottom:5}}><div style={{width:76,flexShrink:0,fontSize:10,color:'#555',fontWeight:600}}>Certifications</div><p style={T3.body}>{resume.certifications.map(c=>c.name).join(' · ')}</p></div>)}
-          {(resume.volunteer||[]).length>0&&(<div style={{display:'flex',gap:14,marginBottom:5}}><div style={{width:76,flexShrink:0,fontSize:10,color:'#555',fontWeight:600}}>Volunteer</div><p style={T3.body}>{resume.volunteer.map(v=>`${v.role}${v.organization?`, ${v.organization}`:''}`).join(' · ')}</p></div>)}
-          {(resume.projects||[]).length>0&&(<div style={{display:'flex',gap:14,marginBottom:5}}><div style={{width:76,flexShrink:0,fontSize:10,color:'#555',fontWeight:600}}>Projects</div><p style={T3.body}>{resume.projects.map(p=>p.name).join(' · ')}</p></div>)}
-          {(resume.awards||[]).length>0&&(<div style={{display:'flex',gap:14,marginBottom:5}}><div style={{width:76,flexShrink:0,fontSize:10,color:'#555',fontWeight:600}}>Awards</div><p style={T3.body}>{resume.awards.map(a=>a.name).join(' · ')}</p></div>)}
-          {(resume.interests||[]).length>0&&(<div style={{display:'flex',gap:14,marginBottom:5}}><div style={{width:76,flexShrink:0,fontSize:10,color:'#555',fontWeight:600}}>Interests</div><p style={T3.body}>{resume.interests.map(i=>i.interest).join(' · ')}</p></div>)}
+          {(resume.certifications||[]).length>0&&(
+            <div style={{display:'flex',gap:14,marginBottom:5}}>
+              <div style={{width:76,flexShrink:0,fontSize:10,color:'#555',fontWeight:600}}>Certifications</div>
+              <div style={{flex:1}}>
+                {resume.certifications.map((c,i)=>(
+                  <div key={i} style={{marginBottom:3}}>
+                    <p style={{...T3.body,fontWeight:600,margin:0}}>{c.name}{c.issuer?` — ${c.issuer}`:''}{ c.year?` (${c.year})`:''}</p>
+                    {c.description&&<p style={{...T3.body,fontStyle:'italic',color:'#555'}}>{c.description}</p>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {(resume.volunteer||[]).length>0&&(<div style={{display:'flex',gap:14,marginBottom:5}}><div style={{width:76,flexShrink:0,fontSize:10,color:'#555',fontWeight:600}}>Volunteer</div><p style={T3.body}>{resume.volunteer.map(v=>[v.role,v.organization].filter(Boolean).join(', ')).join(' · ')}</p></div>)}
+          {(resume.projects||[]).length>0&&(
+            <div style={{display:'flex',gap:14,marginBottom:5}}>
+              <div style={{width:76,flexShrink:0,fontSize:10,color:'#555',fontWeight:600}}>Projects</div>
+              <div style={{flex:1}}>
+                {resume.projects.map((p,i)=>(
+                  <div key={i} style={{marginBottom:3}}>
+                    <p style={{...T3.body,fontWeight:600,margin:0}}>{p.name}</p>
+                    {p.description&&<p style={{...T3.body,fontStyle:'italic',color:'#555'}}>{p.description}</p>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {(resume.awards||[]).length>0&&(
+            <div style={{display:'flex',gap:14,marginBottom:5}}>
+              <div style={{width:76,flexShrink:0,fontSize:10,color:'#555',fontWeight:600}}>Awards</div>
+              <div style={{flex:1}}>
+                {resume.awards.map((a,i)=>(
+                  <div key={i} style={{marginBottom:3}}>
+                    <p style={{...T3.body,fontWeight:600,margin:0}}>{a.name}{a.issuer?` — ${a.issuer}`:''}{ a.year?` (${a.year})`:''}</p>
+                    {a.description&&<p style={{...T3.body,fontStyle:'italic',color:'#555'}}>{a.description}</p>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {(resume.interests||[]).length>0&&(
+            <div style={{display:'flex',gap:14,marginBottom:5}}>
+              <div style={{width:76,flexShrink:0,fontSize:10,color:'#555',fontWeight:600}}>Interests</div>
+              <div style={{flex:1}}>
+                {resume.interests.some(i=>i.description) ? (
+                  resume.interests.map((it,i)=>(
+                    <div key={i} style={{marginBottom:3}}>
+                      <p style={{...T3.body,fontWeight:600,margin:0}}>{it.interest}</p>
+                      {it.description&&<p style={{...T3.body,fontStyle:'italic',color:'#555'}}>{it.description}</p>}
+                    </div>
+                  ))
+                ) : (
+                  <p style={T3.body}>{resume.interests.map(i=>i.interest).join(' · ')}</p>
+                )}
+              </div>
+            </div>
+          )}
         </T3Sec>
       )}
       <div style={{display:'flex',alignItems:'center',gap:4,marginTop:18,paddingTop:8,borderTop:'1px solid #e5e7eb'}}>
@@ -423,7 +500,63 @@ function AIBtn({ onClick, loading }) {
   )
 }
 
-// ── Rewritable textarea ──────────────────────────────────────
+// ── AI Generate from fields (for structured entries like awards) ─
+function AIGenBtn({ onClick, loading, val }) {
+  return (
+    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginTop:4 }}>
+      <label style={lblStyle}>Description</label>
+      <button
+        onClick={onClick}
+        disabled={loading}
+        title="Generate a professional description from the details above"
+        style={{
+          display:'inline-flex', alignItems:'center', gap:3,
+          background:'rgba(139,92,246,0.1)', border:'1px solid rgba(139,92,246,0.22)',
+          borderRadius:5, padding:'2px 8px', cursor: loading ? 'wait' : 'pointer',
+          fontFamily:'inherit', transition:'all 0.15s', opacity: loading ? 0.7 : 1,
+        }}
+        onMouseEnter={e=>{ if(!loading){ e.currentTarget.style.background='rgba(139,92,246,0.2)'; e.currentTarget.style.borderColor='rgba(139,92,246,0.4)' }}}
+        onMouseLeave={e=>{ e.currentTarget.style.background='rgba(139,92,246,0.1)'; e.currentTarget.style.borderColor='rgba(139,92,246,0.22)' }}
+      >
+        {loading
+          ? <span style={{ width:7, height:7, borderRadius:'50%', border:'1.5px solid transparent', borderTopColor:'#a78bfa', animation:'spin 0.6s linear infinite', display:'inline-block' }}/>
+          : <svg width="8" height="8" viewBox="0 0 24 24" fill="none"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z" fill="#a78bfa"/></svg>
+        }
+        <span style={{ fontSize:9, fontWeight:700, color:'#a78bfa', letterSpacing:'0.03em' }}>
+          {loading ? '…' : val ? 'Rewrite' : 'Generate'}
+        </span>
+      </button>
+    </div>
+  )
+}
+
+// Composed component: label row with AI button + textarea
+function AIFieldDesc({ val, set, prompt }) {
+  const [loading, setLoading] = useState(false)
+  const handleGenerate = async () => {
+    if (!prompt) return
+    setLoading(true)
+    try {
+      const res  = await fetch('/api/rewrite', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ text: prompt, context:'generate' }) })
+      const data = await res.json()
+      if (data.rewritten) set(data.rewritten)
+    } catch {}
+    setLoading(false)
+  }
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+      <AIGenBtn onClick={handleGenerate} loading={loading} val={val}/>
+      <textarea
+        className="inp"
+        style={{ ...inpBase, resize:'vertical', lineHeight:1.6, minHeight:44 }}
+        value={val||''}
+        rows={2}
+        placeholder="Click Generate to auto-write, or type manually…"
+        onChange={e=>set(e.target.value)}
+      />
+    </div>
+  )
+}
 function TAI({ label, val, set, rows=3, miss=false, ph='', context='' }) {
   const [loading, setLoading] = useState(false)
   const handleRewrite = async () => {
@@ -526,6 +659,7 @@ const inpBase = {
 export default function App() {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const track  = useTrack()
 
   const [file,             setFile]            = useState(null)
   const [loading,          setLoading]         = useState(false)
@@ -545,57 +679,60 @@ export default function App() {
   const [saveStatus,       setSaveStatus]      = useState('')
   const [mobileTab,        setMobileTab]       = useState('edit')
   const [resumeFont,       setResumeFont]      = useState(FONTS.sidebar[0].value)
-  const autoSaveTimer = useRef(null)
-  const blobCanvasRef = useRef(null)
-  const blobCleanupRef = useRef(null)
+  const autoSaveTimer   = useRef(null)
+  const blobCanvasRef   = useRef(null)
+  const blobCleanupRef  = useRef(null)
 
-  // Stable blob runner — called with the canvas element each time a screen mounts
-  const runBlobs = (canvas) => {
-    // Clean up any previous animation loop
-    if (blobCleanupRef.current) { blobCleanupRef.current(); blobCleanupRef.current = null }
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')
-    let BW, BH, raf
-    const resize = () => { BW = canvas.width = window.innerWidth; BH = canvas.height = window.innerHeight }
-    resize()
-    window.addEventListener('resize', resize)
-    // Use fresh blob state each time so animation starts clean
-    const blobs = [
-      {bx:-0.08,by:-0.05,ox:0.04,oy:0.03,sp:0.0008,op:0,   r:0.68,c:[28,95,255], a:0.58},
-      {bx:-0.02,by:0.60, ox:0.03,oy:0.05,sp:0.0006,op:1.2,  r:0.44,c:[0,195,145],a:0.50},
-      {bx:1.06, by:-0.04,ox:0.04,oy:0.04,sp:0.0007,op:0.7,  r:0.65,c:[130,15,245],a:0.60},
-      {bx:1.02, by:0.55, ox:0.03,oy:0.06,sp:0.0010,op:3.1,  r:0.42,c:[90,0,210],  a:0.44},
-      {bx:0.48, by:-0.10,ox:0.07,oy:0.03,sp:0.0007,op:4.2,  r:0.32,c:[50,130,255],a:0.30},
-    ]
-    const draw = () => {
-      ctx.clearRect(0,0,BW,BH); ctx.fillStyle='#04060c'; ctx.fillRect(0,0,BW,BH)
-      blobs.forEach(b => {
-        b.op += b.sp
-        const cx=(b.bx+Math.sin(b.op)*b.ox)*BW, cy=(b.by+Math.cos(b.op*0.77)*b.oy)*BH, rad=b.r*Math.max(BW,BH)
-        const g=ctx.createRadialGradient(cx,cy,0,cx,cy,rad)
-        const[r,gr,bv]=b.c
-        g.addColorStop(0,`rgba(${r},${gr},${bv},${b.a})`)
-        g.addColorStop(0.35,`rgba(${r},${gr},${bv},${(b.a*0.4).toFixed(3)})`)
-        g.addColorStop(1,`rgba(${r},${gr},${bv},0)`)
-        ctx.globalCompositeOperation='screen'; ctx.beginPath(); ctx.arc(cx,cy,rad,0,Math.PI*2); ctx.fillStyle=g; ctx.fill()
-      })
-      ctx.globalCompositeOperation='multiply'
-      const ink=ctx.createRadialGradient(BW*.5,BH*.5,0,BW*.5,BH*.5,BW*.65)
-      ink.addColorStop(0,'rgba(4,5,16,0.82)'); ink.addColorStop(0.5,'rgba(4,5,16,0.45)'); ink.addColorStop(1,'rgba(4,5,16,0)')
-      ctx.fillStyle=ink; ctx.fillRect(0,0,BW,BH)
-      ctx.fillStyle='rgba(3,4,12,0.35)'; ctx.fillRect(0,0,BW,BH)
-      ctx.globalCompositeOperation='source-over'
-      raf = requestAnimationFrame(draw)
+  // Run blobs on whichever canvas is currently mounted — re-runs every time the screen changes
+  useEffect(() => {
+    // Give React one frame to mount the canvas into the DOM
+    const frame = requestAnimationFrame(() => {
+      const canvas = blobCanvasRef.current
+      // Kill previous loop
+      if (blobCleanupRef.current) { blobCleanupRef.current(); blobCleanupRef.current = null }
+      if (!canvas) return
+      const ctx = canvas.getContext('2d')
+      let BW, BH, raf
+      const resize = () => { BW = canvas.width = window.innerWidth; BH = canvas.height = window.innerHeight }
+      resize()
+      window.addEventListener('resize', resize)
+      const blobs = [
+        {bx:-0.08,by:-0.05,ox:0.04,oy:0.03,sp:0.0008,op:0,   r:0.68,c:[28,95,255], a:0.58},
+        {bx:-0.02,by:0.60, ox:0.03,oy:0.05,sp:0.0006,op:1.2,  r:0.44,c:[0,195,145],a:0.50},
+        {bx:1.06, by:-0.04,ox:0.04,oy:0.04,sp:0.0007,op:0.7,  r:0.65,c:[130,15,245],a:0.60},
+        {bx:1.02, by:0.55, ox:0.03,oy:0.06,sp:0.0010,op:3.1,  r:0.42,c:[90,0,210],  a:0.44},
+        {bx:0.48, by:-0.10,ox:0.07,oy:0.03,sp:0.0007,op:4.2,  r:0.32,c:[50,130,255],a:0.30},
+      ]
+      const draw = () => {
+        ctx.clearRect(0,0,BW,BH); ctx.fillStyle='#04060c'; ctx.fillRect(0,0,BW,BH)
+        blobs.forEach(b => {
+          b.op += b.sp
+          const cx=(b.bx+Math.sin(b.op)*b.ox)*BW, cy=(b.by+Math.cos(b.op*0.77)*b.oy)*BH, rad=b.r*Math.max(BW,BH)
+          const g=ctx.createRadialGradient(cx,cy,0,cx,cy,rad)
+          const[r,gr,bv]=b.c
+          g.addColorStop(0,`rgba(${r},${gr},${bv},${b.a})`)
+          g.addColorStop(0.35,`rgba(${r},${gr},${bv},${(b.a*0.4).toFixed(3)})`)
+          g.addColorStop(1,`rgba(${r},${gr},${bv},0)`)
+          ctx.globalCompositeOperation='screen'; ctx.beginPath(); ctx.arc(cx,cy,rad,0,Math.PI*2); ctx.fillStyle=g; ctx.fill()
+        })
+        ctx.globalCompositeOperation='multiply'
+        const ink=ctx.createRadialGradient(BW*.5,BH*.5,0,BW*.5,BH*.5,BW*.65)
+        ink.addColorStop(0,'rgba(4,5,16,0.82)'); ink.addColorStop(0.5,'rgba(4,5,16,0.45)'); ink.addColorStop(1,'rgba(4,5,16,0)')
+        ctx.fillStyle=ink; ctx.fillRect(0,0,BW,BH)
+        ctx.fillStyle='rgba(3,4,12,0.35)'; ctx.fillRect(0,0,BW,BH)
+        ctx.globalCompositeOperation='source-over'
+        raf = requestAnimationFrame(draw)
+      }
+      draw()
+      blobCleanupRef.current = () => { window.removeEventListener('resize', resize); cancelAnimationFrame(raf) }
+    })
+    return () => {
+      cancelAnimationFrame(frame)
+      if (blobCleanupRef.current) { blobCleanupRef.current(); blobCleanupRef.current = null }
     }
-    draw()
-    blobCleanupRef.current = () => { window.removeEventListener('resize', resize); cancelAnimationFrame(raf) }
-  }
-
-  // Callback ref — fires every time React mounts/unmounts a canvas element
-  const blobRef = (canvas) => {
-    blobCanvasRef.current = canvas
-    runBlobs(canvas)
-  }
+  // Re-run whenever the visible screen changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, !!resume, templateSelected])
 
   // Load resume from dashboard
   useEffect(() => {
@@ -633,6 +770,7 @@ export default function App() {
     const data = await res.json()
     if (data.resumeData) {
       setResume({ linkedin:'', website:'', nationality:'', dob:'', references:'Available upon request', interests:[], volunteer:[], ...data.resumeData })
+      track('resume_created', { file_name: file.name })
     } else alert('Error: ' + data.error)
     setLoading(false)
   }
@@ -642,7 +780,7 @@ export default function App() {
     setAtsLoading(true); setAtsSuccess(false)
     const res  = await fetch('/api/ats', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ resume, jobDescription:resume.jobDescription }) })
     const data = await res.json()
-    if (data.updated) { setResume(p => ({ ...p, ...data.updated })); setAtsSuccess(true) }
+    if (data.updated) { setResume(p => ({ ...p, ...data.updated })); setAtsSuccess(true); track('ats_tailored') }
     else alert('Error: ' + data.error)
     setAtsLoading(false)
   }
@@ -651,13 +789,14 @@ export default function App() {
     setCoverLoading(true)
     const res  = await fetch('/api/cover', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ resume, jobDescription:resume.jobDescription||'' }) })
     const data = await res.json()
-    if (data.letter) setCoverLetter(data.letter)
+    if (data.letter) { setCoverLetter(data.letter); track('cover_letter_generated') }
     else alert('Error: ' + data.error)
     setCoverLoading(false)
   }
 
   const handleDownload = async () => {
     await saveResume(resume, template, accentColor)
+    track('pdf_downloaded', { template, name: resume.name })
     const element = document.getElementById('resume-preview')
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><style>*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}body{font-family:Arial,sans-serif;}</style></head><body>${element.outerHTML}</body></html>`
     const res = await fetch('/api/download', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ html }) })
@@ -705,7 +844,7 @@ export default function App() {
   // ── Auth ────────────────────────────────────────────────────
   if (status === 'loading') return (
     <div style={{ minHeight:'100vh', background:'#04060c', display:'flex', alignItems:'center', justifyContent:'center' }}>
-      <canvas ref={blobRef} style={{ position:'fixed', inset:0, width:'100%', height:'100%', pointerEvents:'none', zIndex:0 }}/>
+      <canvas ref={blobCanvasRef} style={{ position:'fixed', inset:0, width:'100%', height:'100%', pointerEvents:'none', zIndex:0 }}/>
       <div style={{ position:'relative', zIndex:1, width:32, height:32, borderRadius:'50%', border:'1.5px solid transparent', borderTopColor:'#3bff7d', animation:'spin 1s linear infinite' }}/>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
@@ -733,7 +872,7 @@ export default function App() {
         .up-btn:disabled{opacity:0.5;cursor:not-allowed;background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.25);box-shadow:none;}
         .up-btn:disabled::before{display:none;}
       `}</style>
-      <canvas ref={blobRef} style={{ position:'fixed', inset:0, width:'100%', height:'100%', pointerEvents:'none', zIndex:0 }}/>
+      <canvas ref={blobCanvasRef} style={{ position:'fixed', inset:0, width:'100%', height:'100%', pointerEvents:'none', zIndex:0 }}/>
       <div style={{ position:'fixed', inset:0, zIndex:1, pointerEvents:'none', opacity:0.45, backgroundImage:`url("data:image/svg+xml,%3Csvg viewBox='0 0 300 300' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E")` }}/>
       <div className="up-card" style={{ position:'relative', zIndex:2, width:460, padding:'48px 40px 40px', background:'rgba(6,8,18,0.22)', backdropFilter:'blur(56px) saturate(180%)', WebkitBackdropFilter:'blur(56px) saturate(180%)', borderRadius:28, borderTop:'1px solid rgba(255,255,255,0.22)', borderLeft:'1px solid rgba(255,255,255,0.09)', borderRight:'1px solid rgba(255,255,255,0.06)', borderBottom:'1px solid rgba(255,255,255,0.04)', boxShadow:'0 0 0 1px rgba(0,0,0,0.25),0 40px 80px rgba(0,0,0,0.65),0 16px 40px rgba(0,0,0,0.4),inset 0 1px 0 rgba(255,255,255,0.18),inset 0 -1px 0 rgba(255,255,255,0.04)' }}>
         <div style={{ position:'absolute', top:0, left:'8%', right:'8%', height:1, borderRadius:'28px 28px 0 0', pointerEvents:'none', zIndex:10, background:'linear-gradient(90deg,transparent,rgba(255,255,255,0.06) 15%,rgba(255,255,255,0.38) 42%,rgba(255,255,255,0.52) 50%,rgba(255,255,255,0.38) 58%,rgba(255,255,255,0.06) 85%,transparent)' }}/>
@@ -817,7 +956,7 @@ export default function App() {
         .swatch-btn.active{outline-color:rgba(255,255,255,0.7);box-shadow:0 0 8px rgba(255,255,255,0.3);transform:scale(1.15);}
         .swatch-btn:hover{transform:scale(1.2);}
       `}</style>
-      <canvas ref={blobRef} style={{ position:'fixed', inset:0, width:'100%', height:'100%', pointerEvents:'none', zIndex:0 }}/>
+      <canvas ref={blobCanvasRef} style={{ position:'fixed', inset:0, width:'100%', height:'100%', pointerEvents:'none', zIndex:0 }}/>
       <div style={{ position:'fixed', inset:0, zIndex:1, pointerEvents:'none', opacity:0.45, backgroundImage:`url("data:image/svg+xml,%3Csvg viewBox='0 0 300 300' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E")` }}/>
       <div style={{ position:'relative', zIndex:2, maxWidth:1060, margin:'0 auto', padding:'60px 28px 80px' }}>
         <div className="ts-header" style={{ textAlign:'center', marginBottom:50 }}>
@@ -908,7 +1047,7 @@ export default function App() {
       `}</style>
 
       {/* Blob hues */}
-      <canvas ref={blobRef} style={{ position:'fixed', inset:0, width:'100%', height:'100%', pointerEvents:'none', zIndex:0 }}/>
+      <canvas ref={blobCanvasRef} style={{ position:'fixed', inset:0, width:'100%', height:'100%', pointerEvents:'none', zIndex:0 }}/>
       {/* Grain */}
       <div style={{ position:'fixed', inset:0, zIndex:1, pointerEvents:'none', opacity:0.32, backgroundImage:`url("data:image/svg+xml,%3Csvg viewBox='0 0 300 300' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E")` }}/>
 
@@ -1100,6 +1239,11 @@ export default function App() {
                   <ICard key={c.id||i} onDel={()=>delItem('certifications',i)} title={c.name||`Cert ${i+1}`}>
                     <Inp label="Name" val={c.name} set={v=>setArr('certifications',i,'name',v)}/>
                     <Row2><Inp label="Issuer" val={c.issuer} set={v=>setArr('certifications',i,'issuer',v)}/><Inp label="Year" val={c.year} set={v=>setArr('certifications',i,'year',v)}/></Row2>
+                    <AIFieldDesc
+                      val={c.description||''}
+                      set={v=>setArr('certifications',i,'description',v)}
+                      prompt={`Write a single concise professional sentence (max 20 words) for a resume certification entry. Certification: "${c.name||''}", Issued by: "${c.issuer||''}", Year: "${c.year||''}". Be specific, natural, not robotic. Return only the sentence.`}
+                    />
                   </ICard>
                 ))}
               </>}
@@ -1119,6 +1263,11 @@ export default function App() {
                 {(resume.interests||[]).map((item,i)=>(
                   <ICard key={item.id||i} onDel={()=>delItem('interests',i)} title={item.interest||`Interest ${i+1}`}>
                     <Inp label="Interest" val={item.interest} set={v=>setArr('interests',i,'interest',v)} ph="e.g. Open-source development"/>
+                    <AIFieldDesc
+                      val={item.description||''}
+                      set={v=>setArr('interests',i,'description',v)}
+                      prompt={`Write a single concise professional sentence (max 18 words) describing this personal interest for a resume: "${item.interest||''}". Show how it reflects positively on the candidate. Be natural, not robotic. Return only the sentence.`}
+                    />
                   </ICard>
                 ))}
               </>}
@@ -1129,6 +1278,11 @@ export default function App() {
                   <ICard key={a.id||i} onDel={()=>delItem('awards',i)} title={a.name||`Award ${i+1}`}>
                     <Inp label="Award" val={a.name} set={v=>setArr('awards',i,'name',v)}/>
                     <Row2><Inp label="Issuer" val={a.issuer} set={v=>setArr('awards',i,'issuer',v)}/><Inp label="Year" val={a.year} set={v=>setArr('awards',i,'year',v)}/></Row2>
+                    <AIFieldDesc
+                      val={a.description||''}
+                      set={v=>setArr('awards',i,'description',v)}
+                      prompt={`Write a single concise professional sentence (max 20 words) for a resume award entry. Award: "${a.name||''}", Issued by: "${a.issuer||''}", Year: "${a.year||''}". Be specific, natural, not robotic. Return only the sentence.`}
+                    />
                   </ICard>
                 ))}
               </>}
