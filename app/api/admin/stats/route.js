@@ -2,15 +2,18 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-)
+export const dynamic = 'force-dynamic'
 
 export async function GET(req) {
   const { searchParams } = new URL(req.url)
   if (searchParams.get('secret') !== process.env.ADMIN_SECRET)
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  // Create inside handler so env vars are available at runtime not build time
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  )
 
   const [
     { count: totalUsers },
