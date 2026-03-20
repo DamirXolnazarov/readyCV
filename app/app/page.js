@@ -796,16 +796,18 @@ export default function App() {
 
   const handleDownload = async () => {
     await saveResume(resume, template, accentColor)
-    track('pdf_downloaded', { template, name: resume.name })
-    const element = document.getElementById('resume-preview')
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><style>*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}body{font-family:Arial,sans-serif;}</style></head><body>${element.outerHTML}</body></html>`
-    const res = await fetch('/api/download', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ html }) })
-    if (!res.ok) { alert('Download failed'); return }
-    const blob = await res.blob()
-    const url  = URL.createObjectURL(blob)
-    const a    = document.createElement('a')
-    a.href = url; a.download = `${resume.name||'resume'}-readyCV.pdf`; a.click()
-    URL.revokeObjectURL(url)
+    track("pdf_downloaded", { template, name: resume.name })
+    const element = document.getElementById("resume-preview")
+    if (!element) { alert("Preview not found"); return }
+    const html2pdf = (await import("html2pdf.js")).default
+    const opt = {
+      margin:      0,
+      filename:    `${resume.name||"resume"}-readyCV.pdf`,
+      image:       { type:"jpeg", quality:1 },
+      html2canvas: { scale:2, useCORS:true, logging:false, backgroundColor:"#ffffff" },
+      jsPDF:       { unit:"mm", format:"a4", orientation:"portrait" },
+    }
+    html2pdf().set(opt).from(element).save()
   }
 
   const saveResume = async (resumeData, tpl, color) => {
