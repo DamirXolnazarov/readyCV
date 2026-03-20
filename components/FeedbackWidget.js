@@ -52,13 +52,16 @@ export default function FeedbackWidget() {
   }
 
   return (
-    <>
+    <div className="fb-root">
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         @keyframes fbSpin{to{transform:rotate(360deg)}}
         .fb-btn:hover{transform:scale(1.10)!important;box-shadow:0 0 28px rgba(59,255,125,0.60)!important;}
         .fb-send:hover:not(:disabled){transform:translateY(-1px)!important;box-shadow:0 0 20px rgba(59,255,125,0.55)!important;}
         .fb-send:disabled{opacity:0.5!important;cursor:not-allowed!important;}
         .fb-ta:focus{outline:none!important;border-color:rgba(59,255,125,0.38)!important;box-shadow:0 0 0 3px rgba(59,255,125,0.07)!important;}
+        .fb-root{font-family:'Inter',-apple-system,sans-serif!important;}
+        .fb-root *{font-family:'Inter',-apple-system,sans-serif!important;}
       `}</style>
 
       {/* ── Floating bubble ── */}
@@ -156,6 +159,6 @@ export default function FeedbackWidget() {
           </div>
         </div>
       )}
-    </>
+    </div>
   )
 }
