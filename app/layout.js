@@ -1,5 +1,7 @@
 import Providers from './providers'
 import FeedbackWidget from '@/components/FeedbackWidget'
+import { Analytics } from '@vercel/analytics/react'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 
 export const metadata = {
   title: 'ICVY',
@@ -18,6 +20,8 @@ export default function RootLayout({ children }) {
         <Providers>
           {children}
           <FeedbackWidget />
+          <Analytics />
+          <SpeedInsights />
         </Providers>
       </body>
     </html>
