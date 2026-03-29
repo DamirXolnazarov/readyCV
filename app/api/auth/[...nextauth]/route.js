@@ -26,15 +26,14 @@ const handler = NextAuth({
       async authorize(credentials) {
         const { email, password, name, mode } = credentials
 
-        if (mode === 'signup') {
-          // Check if user already exists
-          const { data: existing } = await supabase
-            .from('users')
-            .select('id')
-            .eq('email', email)
-            .single()
+    if (mode === 'signup') {
+  const { data: existing } = await supabase
+    .from('users')
+    .select('id')
+    .eq('email', email)
+    .maybeSingle()  // ← change .single() to .maybeSingle()
 
-          if (existing) throw new Error('Email already in use')
+  if (existing) throw new Error('Email already in use')
 
           // Ha| password and create user
           const hashed = await bcrypt.hash(password, 12)
@@ -49,11 +48,11 @@ const handler = NextAuth({
         }
 
         // Sign in
-        const { data: user } = await supabase
-          .from('users')
-          .select('*')
-          .eq('email', email)
-          .single()
+   const { data: user } = await supabase
+  .from('users')
+  .select('*')
+  .eq('email', email)
+  .maybeSingle()  // ← change .single() to .maybeSingle()
 
         if (!user) throw new Error('No account found with this email')
         if (!user.password) throw new Error('Please sign in with Google')
