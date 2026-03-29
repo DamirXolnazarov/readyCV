@@ -4,10 +4,12 @@ import CredentialsProvider from 'next-auth/providers/credentials'
 import { createClient } from '@supabase/supabase-js'
 import bcrypt from 'bcryptjs'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-)
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY  // service role bypasses RLS
+  )
+}
 
 const handler = NextAuth({
   providers: [
@@ -21,40 +23,46 @@ const handler = NextAuth({
         email:    { label:'Email',    type:'email'    },
         password: { label:'Password', type:'password' },
         name:     { label:'Name',     type:'text'     },
-        mode:     { label:'Mode',     type:'text'     }, // 'signin' or 'signup'
+        mode:     { label:'Mode',     type:'text'     },
       },
       async authorize(credentials) {
+        const supabase = getSupabase()
         const { email, password, name, mode } = credentials
 
-    if (mode === 'signup') {
-  const { data: existing } = await supabase
-    .from('users')
-    .select('id')
-    .eq('email', email)
-    .maybeSingle()  // ← change .single() to .maybeSingle()
+        if (mode === 'signup') {
+          // Check if already exists
+          const { data: existing } = await supabase
+            .from('users')
+            .select('id')
+            .eq('email', email)
+            .maybeSingle()
 
-  if (existing) throw new Error('Email already in use')
+          if (existing) throw new Error('Email already in use')
 
-          // Ha| password and create user
+          // Hash and insert
           const hashed = await bcrypt.hash(password, 12)
           const { data: newUser, error } = await supabase
             .from('users')
-            .insert({ email, name, password: hashed, provider:'credentials' })
-            .select()
-            .single()
+            .insert({ email, name, password: hashed, provider: 'credentials' })
+            .select('id, email, name')
+            .maybeSingle()
 
-          if (error) throw new Error('Failed to create account')
+          if (error || !newUser) {
+            console.error('Signup error:', error)
+            throw new Error('Failed to create account')
+          }
+
           return { id: newUser.id, email: newUser.email, name: newUser.name }
         }
 
         // Sign in
-   const { data: user } = await supabase
-  .from('users')
-  .select('*')
-  .eq('email', email)
-  .maybeSingle()  // ← change .single() to .maybeSingle()
+        const { data: user } = await supabase
+          .from('users')
+          .select('*')
+          .eq('email', email)
+          .maybeSingle()
 
-        if (!user) throw new Error('No account found with this email')
+        if (!user)          throw new Error('No account found with this email')
         if (!user.password) throw new Error('Please sign in with Google')
 
         const valid = await bcrypt.compare(password, user.password)
@@ -67,13 +75,14 @@ const handler = NextAuth({
   callbacks: {
     async signIn({ user, account }) {
       if (account?.provider === 'google') {
+        const supabase = getSupabase()
         const { error } = await supabase.from('users').upsert({
           email:    user.email,
           name:     user.name,
           image:    user.image,
           provider: 'google',
         }, { onConflict: 'email' })
-        if (error) console.error('Supabase upsert error:', error)
+        if (error) console.error('Google upsert error:', error)
       }
       return true
     },
